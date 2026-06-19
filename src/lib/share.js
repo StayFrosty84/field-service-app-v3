@@ -29,6 +29,15 @@ export function downloadBlob(blob, filename) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+// Opens a blob (e.g. a PDF preview) in a new tab; falls back to download if blocked.
+export function openBlob(blob, filename = 'preview.pdf') {
+  const url = URL.createObjectURL(blob);
+  const win = window.open(url, '_blank');
+  if (!win) downloadBlob(blob, filename);
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+  return Boolean(win);
+}
+
 export async function copyText(text) {
   try {
     await navigator.clipboard.writeText(text);

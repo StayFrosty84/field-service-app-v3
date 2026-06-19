@@ -14,12 +14,15 @@ export const fmtDateTime = (ts) =>
       })
     : '';
 
-// Bill-of-sale totals from line items + optional tax rate (percent).
-export function computeTotals(lineItems = [], taxRate = 0) {
+// Bill-of-sale totals from line items + optional tax and credit-card surcharge.
+// The card fee (when applied) is charged on subtotal + tax — the amount that hits the card.
+export function computeTotals(lineItems = [], taxRate = 0, ccFeeRate = 0, ccFeeApplied = false) {
   const subtotal = lineItems.reduce(
     (sum, li) => sum + (Number(li.qty) || 0) * (Number(li.unitPrice) || 0),
     0
   );
   const taxAmount = subtotal * ((Number(taxRate) || 0) / 100);
-  return { subtotal, taxAmount, total: subtotal + taxAmount };
+  const beforeFee = subtotal + taxAmount;
+  const ccFeeAmount = ccFeeApplied ? beforeFee * ((Number(ccFeeRate) || 0) / 100) : 0;
+  return { subtotal, taxAmount, ccFeeAmount, total: beforeFee + ccFeeAmount };
 }

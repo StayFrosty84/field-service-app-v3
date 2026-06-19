@@ -23,6 +23,8 @@ export default function BillEditor() {
   const [ctx, setCtx] = useState(null); // { profile, account, contact, order, photos, bill }
   const [items, setItems] = useState([blankItem()]);
   const [taxRate, setTaxRate] = useState('');
+  const [ccFeeApplied, setCcFeeApplied] = useState(false);
+  const [ccFeeRate, setCcFeeRate] = useState('3');
   const [existingSignature, setExistingSignature] = useState(null); // Blob
   const [busy, setBusy] = useState(false);
 
@@ -36,10 +38,16 @@ export default function BillEditor() {
       const profile = await getProfile();
       const bill = await getBillForWorkOrder(id);
       setCtx({ order, account, contact, photos, profile, bill });
+      // Default the card-fee rate from the business profile (falls back to 3%).
+      const defaultCcRate = profile?.ccFeeRate != null ? String(profile.ccFeeRate) : '3';
       if (bill) {
         setItems(bill.lineItems?.length ? bill.lineItems.map((li) => ({ id: crypto.randomUUID(), ...li })) : [blankItem()]);
         setTaxRate(bill.taxRate ? String(bill.taxRate) : '');
+        setCcFeeApplied(Boolean(bill.ccFeeApplied));
+        setCcFeeRate(bill.ccFeeRate != null ? String(bill.ccFeeRate) : defaultCcRate);
         if (bill.signatureBlob) setExistingSignature(bill.signatureBlob);
+      } else {
+        setCcFeeRate(defaultCcRate);
       }
     })();
   }, [id]);
@@ -54,7 +62,7 @@ export default function BillEditor() {
   if (ctx.missing) return <p className="muted">Work order not found.</p>;
   const { profile, account, contact, order, photos } = ctx;
 
-  const totals = computeTotals(items, taxRate);
+  const totals = computeTotals(items, taxRate, ccFeeRate, ccFeeApplied);
 
   const setItem = (itemId, key, val) =>
     setItems((arr) => arr.map((it) => (it.id === itemId ? { ...it, [key]: val } : it)));
@@ -74,7 +82,12 @@ export default function BillEditor() {
     setBusy(true);
     try {
       const signatureBlob = (await sigRef.current?.getBlob()) || existingSignature || null;
-      const { subtotal, taxAmount, total } = computeTotals(cleanItems, taxRate);
+      const { subtotal, taxAmount, ccFeeAmount, total } = computeTotals(
+        cleanItems,
+        taxRate,
+        ccFeeRate,
+        ccFeeApplied
+      );
       const recipients = {
         customerEmail: account?.email || '',
         contactEmail: contact?.email || '',
@@ -85,6 +98,9 @@ export default function BillEditor() {
         taxRate: Number(taxRate) || 0,
         subtotal,
         taxAmount,
+        ccFeeApplied,
+        ccFeeRate: ccFeeApplied ? Number(ccFeeRate) || 0 : 0,
+        ccFeeAmount,
         total,
         signatureBlob,
         recipients,
@@ -200,6 +216,37 @@ export default function BillEditor() {
           <span>Tax</span>
           <span>{money(totals.taxAmount)}</span>
         </div>
+
+        <hr style={{ borderColor: 'var(--border)', margin: '12px 0' }} />
+
+        <label className="row" style={{ margin: 0, gap: 10, alignItems: 'center' }}>
+          <input
+            type="checkbox"
+            checked={ccFeeApplied}
+            onChange={(e) => setCcFeeApplied(e.target.checked)}
+            style={{ width: 22, height: 22, minHeight: 0, flex: '0 0 auto' }}
+          />
+          <span style={{ flex: 1 }}>Add credit card fee</span>
+          <input
+            type="number"
+            inputMode="decimal"
+            min="0"
+            step="0.01"
+            value={ccFeeRate}
+            onChange={(e) => setCcFeeRate(e.target.value)}
+            disabled={!ccFeeApplied}
+            aria-label="Credit card fee percent"
+            style={{ width: 84 }}
+          />
+          <span className="muted">%</span>
+        </label>
+        {ccFeeApplied && (
+          <div className="row" style={{ justifyContent: 'space-between', marginTop: 10 }}>
+            <span>Credit card fee</span>
+            <span>{money(totals.ccFeeAmount)}</span>
+          </div>
+        )}
+
         <hr style={{ borderColor: 'var(--border)', margin: '12px 0' }} />
         <div className="row" style={{ justifyContent: 'space-between' }}>
           <strong style={{ fontSize: 18 }}>Total</strong>

@@ -153,6 +153,8 @@ export async function generateBillPdf({ profile, account, contact, workOrder, bi
   };
   totRow('Subtotal', bill?.subtotal || 0);
   if (Number(bill?.taxRate) > 0) totRow(`Tax (${bill.taxRate}%)`, bill?.taxAmount || 0);
+  if (bill?.ccFeeApplied && Number(bill?.ccFeeAmount) > 0)
+    totRow(`Credit card fee (${bill.ccFeeRate}%)`, bill?.ccFeeAmount || 0);
   doc.setDrawColor(200).line(totalsX, y - 6, right, y - 6);
   totRow('Total', bill?.total || 0, true);
 

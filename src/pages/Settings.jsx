@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { getProfile, saveProfile } from '../db/db.js';
 import { exportBackup, importBackup, backupFilename } from '../lib/backup.js';
-import { shareFile } from '../lib/share.js';
+import { shareFile, openBlob } from '../lib/share.js';
+import { computeTotals } from '../lib/format.js';
+import { sampleBillData } from '../lib/sampleBill.js';
 import { useToast } from '../components/Toast.jsx';
 
-const EMPTY = { businessName: '', ownerName: '', phone: '', email: '', address: '' };
+const EMPTY = { businessName: '', ownerName: '', phone: '', email: '', address: '', ccFeeRate: '3' };
 
 export default function Settings() {
   const toast = useToast();
@@ -21,6 +23,7 @@ export default function Settings() {
           phone: p.phone || '',
           email: p.email || '',
           address: p.address || '',
+          ccFeeRate: p.ccFeeRate != null ? String(p.ccFeeRate) : '3',
         });
         if (p.logoBlob) {
           setLogoBlob(p.logoBlob);
@@ -41,8 +44,38 @@ export default function Settings() {
   }
 
   async function saveProfileForm() {
-    await saveProfile({ ...form, logoBlob });
+    await saveProfile({ ...form, ccFeeRate: Number(form.ccFeeRate) || 0, logoBlob });
     toast('Profile saved');
+  }
+
+  async function previewSample() {
+    // Load the PDF library on demand so it stays out of the main bundle.
+    const { generateBillPdf } = await import('../lib/pdf.js');
+    const { account, contact, workOrder, lineItems, taxRate } = sampleBillData();
+    const ccRate = Number(form.ccFeeRate) || 0;
+    const { subtotal, taxAmount, ccFeeAmount, total } = computeTotals(lineItems, taxRate, ccRate, true);
+    const bill = {
+      lineItems,
+      taxRate,
+      subtotal,
+      taxAmount,
+      ccFeeApplied: true,
+      ccFeeRate: ccRate,
+      ccFeeAmount,
+      total,
+      signatureBlob: null,
+      pdfGeneratedAt: Date.now(),
+    };
+    const blob = await generateBillPdf({
+      profile: { ...form, logoBlob },
+      account,
+      contact,
+      workOrder,
+      bill,
+      photoBlobs: [],
+    });
+    openBlob(blob, 'sample-bill-of-sale.pdf');
+    toast('Opening sample PDF…');
   }
 
   async function backup() {
@@ -89,6 +122,17 @@ export default function Settings() {
       <label>Address</label>
       <textarea value={form.address} onChange={set('address')} />
 
+      <label>Default credit card fee % (used on new bills; editable per bill)</label>
+      <input
+        type="number"
+        inputMode="decimal"
+        min="0"
+        step="0.01"
+        value={form.ccFeeRate}
+        onChange={set('ccFeeRate')}
+        style={{ width: 140 }}
+      />
+
       <label>Logo (optional)</label>
       <div className="row" style={{ gap: 12 }}>
         {logoUrl && (
@@ -101,10 +145,17 @@ export default function Settings() {
       </div>
 
       <div className="btn-row">
+        <button className="btn btn--ghost" onClick={previewSample}>
+          👁 Preview sample
+        </button>
         <button className="btn" onClick={saveProfileForm}>
           Save profile
         </button>
       </div>
+      <p className="muted" style={{ fontSize: 13, marginTop: 8 }}>
+        “Preview sample” opens an example Bill of Sale PDF using your current profile above,
+        so you can check how it looks (including the credit card fee).
+      </p>
 
       <div className="section-title">Backup &amp; restore</div>
       <div className="card">
