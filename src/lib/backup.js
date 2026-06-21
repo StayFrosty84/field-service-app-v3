@@ -8,8 +8,9 @@ const TABLES = [
   'photos',
   'billsOfSale',
   'catalogItems',
+  'workTypes',
 ];
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 const LAST_BACKUP_KEY = 'fs-last-backup';
 
 export const lastBackupAt = () => Number(localStorage.getItem(LAST_BACKUP_KEY) || 0);

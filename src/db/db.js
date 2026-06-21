@@ -19,6 +19,11 @@ db.version(2).stores({
   billsOfSale: 'id, workOrderId, createdAt, paymentStatus',
 });
 
+// v3: work-type line-item templates.
+db.version(3).stores({
+  workTypes: 'id, name, createdAt',
+});
+
 export const uid = () =>
   crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
@@ -186,4 +191,51 @@ export async function updateCatalogItem(id, data) {
 
 export async function deleteCatalogItem(id) {
   await db.catalogItems.delete(id);
+}
+
+// ---- Work types -------------------------------------------------------------
+export const DEFAULT_WORK_TYPES = [
+  { name: 'Service Call', icon: 'wrench', items: [{ description: 'Service call / trip fee', qty: 1, unitPrice: 65 }] },
+  { name: 'Diagnostic', icon: 'search', items: [{ description: 'Diagnostic fee', qty: 1, unitPrice: 95 }] },
+  {
+    name: 'Tire Job',
+    icon: 'wrench',
+    items: [
+      { description: 'Tire mount & balance', qty: 4, unitPrice: 25 },
+      { description: 'Shop supplies', qty: 1, unitPrice: 10 },
+    ],
+  },
+];
+
+export async function listWorkTypes() {
+  return db.workTypes.orderBy('createdAt').toArray();
+}
+
+export async function createWorkType(data) {
+  const id = uid();
+  await db.workTypes.add({ id, createdAt: now(), icon: 'wrench', items: [], ...data });
+  return id;
+}
+
+export async function updateWorkType(id, data) {
+  await db.workTypes.update(id, data);
+}
+
+export async function deleteWorkType(id) {
+  await db.workTypes.delete(id);
+}
+
+// Seed starter work types exactly once. The flag lives on the profile so deleting
+// them all won't re-add them on the next boot.
+export async function ensureSeedWorkTypes() {
+  const profile = await db.businessProfile.get(PROFILE_ID);
+  if (profile?.workTypesSeeded) return;
+  if ((await db.workTypes.count()) === 0) {
+    await db.workTypes.bulkAdd(DEFAULT_WORK_TYPES.map((w) => ({ id: uid(), createdAt: now(), ...w })));
+  }
+  await saveProfile({ workTypesSeeded: true });
+}
+
+export async function updatePhoto(id, blob) {
+  await db.photos.update(id, { blob, annotatedAt: now() });
 }
