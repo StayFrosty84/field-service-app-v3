@@ -9,6 +9,8 @@ import {
   addPhoto,
   deletePhoto,
   getBillForWorkOrder,
+  markBillPaid,
+  markBillUnpaid,
 } from '../db/db.js';
 import { toDateInput, fromDateInput, money } from '../lib/format.js';
 import { shareFile, openBlob } from '../lib/share.js';
@@ -28,6 +30,7 @@ export default function WorkOrderDetail() {
   const [gps, setGps] = useState(null);
   const [serviceDate, setServiceDate] = useState('');
   const [loaded, setLoaded] = useState(false);
+  const [payMethod, setPayMethod] = useState('Cash');
 
   const data = useLiveQuery(async () => {
     const order = await db.workOrders.get(id);
@@ -169,10 +172,30 @@ export default function WorkOrderDetail() {
             <strong>{money(bill.total || 0)}</strong>
             {features.billing && (
               <span className={`badge badge--${bill.paymentStatus === 'paid' ? 'paid' : 'unpaid'}`}>
-                {bill.paymentStatus === 'paid' ? 'paid' : 'unpaid'}
+                {bill.paymentStatus === 'paid'
+                  ? `paid${bill.paymentMethod ? ` · ${bill.paymentMethod}` : ''}`
+                  : 'unpaid'}
               </span>
             )}
           </div>
+          {features.billing &&
+            (bill.paymentStatus === 'paid' ? (
+              <button className="btn btn--ghost btn--sm" style={{ marginTop: 10 }} onClick={() => markBillUnpaid(bill.id)}>
+                <Icon name="rotate-ccw" /> Mark unpaid
+              </button>
+            ) : (
+              <div className="row" style={{ gap: 8, marginTop: 10, alignItems: 'center' }}>
+                <select value={payMethod} onChange={(e) => setPayMethod(e.target.value)} style={{ flex: 1 }}>
+                  <option>Cash</option>
+                  <option>Check</option>
+                  <option>Card</option>
+                  <option>Other</option>
+                </select>
+                <button className="btn btn--sm" onClick={() => markBillPaid(bill.id, payMethod)}>
+                  <Icon name="check" /> Mark paid
+                </button>
+              </div>
+            ))}
           {bill.pdfBlob && (
             <div className="btn-row">
               <button className="btn btn--ghost" onClick={() => openBlob(bill.pdfBlob, 'bill-of-sale.pdf')}>
