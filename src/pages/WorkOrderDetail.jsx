@@ -11,6 +11,7 @@ import {
   getBillForWorkOrder,
   markBillPaid,
   markBillUnpaid,
+  listWorkTypes,
 } from '../db/db.js';
 import { toDateInput, fromDateInput, money } from '../lib/format.js';
 import { shareFile, openBlob } from '../lib/share.js';
@@ -41,6 +42,8 @@ export default function WorkOrderDetail() {
     const bill = await getBillForWorkOrder(id);
     return { order, account, contact, photos, bill };
   }, [id]);
+
+  const workTypes = useLiveQuery(listWorkTypes) || [];
 
   useEffect(() => {
     if (data?.order && !loaded) {
@@ -153,6 +156,31 @@ export default function WorkOrderDetail() {
       <button className="btn btn--ghost btn--sm" onClick={saveEdits} style={{ marginTop: 8 }}>
         Save changes
       </button>
+
+      {workTypes.length > 0 && (
+        <>
+          <label>Work type</label>
+          <div className="chips" style={{ flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className={`chip ${!order.workTypeId ? 'chip--active' : ''}`}
+              onClick={() => updateWorkOrder(id, { workTypeId: null, templateItems: [] })}
+            >
+              None
+            </button>
+            {workTypes.map((w) => (
+              <button
+                type="button"
+                key={w.id}
+                className={`chip ${order.workTypeId === w.id ? 'chip--active' : ''}`}
+                onClick={() => updateWorkOrder(id, { workTypeId: w.id, templateItems: w.items || [] })}
+              >
+                <Icon name={w.icon || 'wrench'} size={14} /> {w.name}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
 
       <div className="section-title">Photos ({photos.length})</div>
       <label className="btn btn--ghost" style={{ margin: '0 0 10px' }}>

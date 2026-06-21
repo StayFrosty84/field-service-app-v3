@@ -63,6 +63,16 @@ export default function BillEditor() {
       } else {
         setCcFeeRate(defaultCcRate);
         if (profile?.taxRate) setTaxRate(String(profile.taxRate));
+        if (order.templateItems?.length) {
+          setItems(
+            order.templateItems.map((li) => ({
+              id: crypto.randomUUID(),
+              description: li.description,
+              qty: li.qty ?? 1,
+              unitPrice: li.unitPrice ?? '',
+            }))
+          );
+        }
       }
     })();
   }, [id]);
