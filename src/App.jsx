@@ -4,6 +4,7 @@ import { ToastProvider } from './components/Toast.jsx';
 import Layout from './components/Layout.jsx';
 
 import Home from './pages/Home.jsx';
+import Work from './pages/Work.jsx';
 import WorkOrderNew from './pages/WorkOrderNew.jsx';
 import WorkOrderDetail from './pages/WorkOrderDetail.jsx';
 // Lazy-loaded: pulls in jsPDF only when actually creating a bill.
@@ -24,6 +25,7 @@ export default function App() {
       <Routes>
         <Route element={<Layout />}>
           <Route index element={<Home />} />
+          <Route path="work" element={<Work />} />
 
           <Route path="work-orders/new" element={<WorkOrderNew />} />
           <Route path="work-orders/:id" element={<WorkOrderDetail />} />

@@ -157,7 +157,7 @@ export default function Settings() {
       <div className="card">
         <ToggleRow
           label="Home dashboard"
-          hint="When off, Home is just the work-order list."
+          hint="Show the Home tab with summary stats. When off, the Work tab is your home screen."
           checked={features.dashboard}
           onChange={(v) => toggleFeature('featDashboard', v)}
         />

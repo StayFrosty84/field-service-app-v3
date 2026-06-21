@@ -2,7 +2,8 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useFeatures } from '../lib/useFeatures.js';
 
 const ALL_TABS = [
-  { to: '/', label: 'Work', ico: '🧰', end: true },
+  { to: '/', label: 'Home', ico: '🏠', end: true },
+  { to: '/work', label: 'Work', ico: '🧰' },
   { to: '/accounts', label: 'Accounts', ico: '🏢' },
   { to: '/contacts', label: 'Contacts', ico: '👤' },
   { to: '/billing', label: 'Billing', ico: '💵' },
@@ -17,7 +18,11 @@ export default function Layout() {
   const navigate = useNavigate();
   const features = useFeatures();
   const isRoot = ROOT_PATHS.includes(pathname);
-  const tabs = ALL_TABS.filter((t) => t.to !== '/billing' || features.billing);
+  const tabs = ALL_TABS.filter((t) => {
+    if (t.to === '/billing' && !features.billing) return false;
+    if (t.to === '/' && !features.dashboard) return false;
+    return true;
+  });
 
   return (
     <div className="app">

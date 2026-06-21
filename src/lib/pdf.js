@@ -107,30 +107,43 @@ export async function generateBillPdf({ profile, account, contact, workOrder, bi
   }
   line(isPaid ? 36 : 26);
 
-  // ---- Bill To + Service ----
+  // ---- Bill To + Service (two columns; each line wraps within its column) ----
   const colW = (right - M - 16) / 2;
   const startY = y;
-  doc.setFont('helvetica', 'bold').setFontSize(11).text('Bill To', M, y);
-  doc.setFont('helvetica', 'normal').setFontSize(10).setTextColor(60);
+  const lineH = 13;
+
+  // Renders a heading + list of strings in a column, wrapping each entry to colW.
+  // Returns the y position just past the last rendered line so the taller column
+  // determines where the next section starts (long addresses no longer overlap).
+  const renderColumn = (heading, items, x) => {
+    doc.setTextColor(0).setFont('helvetica', 'bold').setFontSize(11).text(heading, x, startY);
+    doc.setFont('helvetica', 'normal').setFontSize(10).setTextColor(60);
+    let cy = startY + 16;
+    items.filter(Boolean).forEach((t) => {
+      const wrapped = doc.splitTextToSize(String(t), colW);
+      doc.text(wrapped, x, cy);
+      cy += wrapped.length * lineH;
+    });
+    doc.setTextColor(0);
+    return cy;
+  };
+
   const billTo = [
     account?.name,
     account?.address,
     account?.phone,
     contact ? `Attn: ${contact.name}` : null,
     [contact?.phone, contact?.email].filter(Boolean).join('  •  ') || null,
-  ].filter(Boolean);
-  billTo.forEach((t, i) => doc.text(String(t), M, y + 16 + i * 13, { maxWidth: colW }));
-
-  doc.setTextColor(0).setFont('helvetica', 'bold').setFontSize(11).text('Service Details', M + colW + 16, startY);
-  doc.setFont('helvetica', 'normal').setFontSize(10).setTextColor(60);
+  ];
   const svc = [
     workOrder?.location?.text ? `Location: ${workOrder.location.text}` : null,
     workOrder?.location?.lat ? `GPS: ${workOrder.location.lat.toFixed(5)}, ${workOrder.location.lng.toFixed(5)}` : null,
-  ].filter(Boolean);
-  svc.forEach((t, i) => doc.text(String(t), M + colW + 16, startY + 16 + i * 13, { maxWidth: colW }));
-  doc.setTextColor(0);
+  ];
 
-  y = startY + 16 + Math.max(billTo.length, svc.length) * 13;
+  const billToEnd = renderColumn('Bill To', billTo, M);
+  const svcEnd = renderColumn('Service Details', svc, M + colW + 16);
+
+  y = Math.max(billToEnd, svcEnd);
   line(18);
 
   // ---- Issue ----
