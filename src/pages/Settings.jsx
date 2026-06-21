@@ -9,6 +9,7 @@ import { sampleBillData } from '../lib/sampleBill.js';
 import { getTheme, setTheme } from '../lib/theme.js';
 import { useToast } from '../components/Toast.jsx';
 import CatalogManager from '../components/CatalogManager.jsx';
+import WorkTypeManager from '../components/WorkTypeManager.jsx';
 import Icon from '../components/Icon.jsx';
 
 const EMPTY = {
@@ -259,6 +260,12 @@ export default function Settings() {
         “Preview sample” opens an example Bill of Sale PDF using your current profile above,
         so you can check how it looks (including the credit card fee).
       </p>
+
+      <div className="section-title">Work types</div>
+      <p className="muted" style={{ fontSize: 13, marginTop: 0 }}>
+        Pick a work type on a new work order to pre-fill the bill with these line items.
+      </p>
+      <WorkTypeManager />
 
       <div className="section-title">Parts &amp; Labor catalog</div>
       <CatalogManager />
