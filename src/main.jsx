@@ -5,9 +5,10 @@ import App from './App.jsx';
 import './styles.css';
 import { initTheme } from './lib/theme.js';
 import { ensureSeedWorkTypes } from './db/db.js';
+import { ensureSeedDemoData } from './lib/seedDemo.js';
 
 initTheme();
-ensureSeedWorkTypes();
+ensureSeedWorkTypes().then(() => ensureSeedDemoData());
 
 createRoot(document.getElementById('root')).render(
   <React.StrictMode>
