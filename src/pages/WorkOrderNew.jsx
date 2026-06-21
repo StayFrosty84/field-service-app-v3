@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db, createAccount, createContact, createWorkOrder, addPhoto, listWorkTypes } from '../db/db.js';
+import { db, createAccount, createContact, createWorkOrder, addPhoto, listWorkTypes, getProfile } from '../db/db.js';
 import { toDateInput, fromDateInput } from '../lib/format.js';
 import { useToast } from '../components/Toast.jsx';
 import AddressAutocomplete from '../components/AddressAutocomplete.jsx';
@@ -15,6 +15,7 @@ export default function WorkOrderNew() {
   const accounts = useLiveQuery(() => db.accounts.orderBy('name').toArray());
   const allContacts = useLiveQuery(() => db.contacts.toArray());
   const workTypes = useLiveQuery(listWorkTypes) || [];
+  const profile = useLiveQuery(getProfile);
 
   const [accountId, setAccountId] = useState(location.state?.accountId || '');
   const [newAccountName, setNewAccountName] = useState('');
@@ -50,6 +51,13 @@ export default function WorkOrderNew() {
       if (target) URL.revokeObjectURL(target.url);
       return p.filter((x) => x.id !== id);
     });
+  }
+
+  function useShopAddress() {
+    const addr = (profile?.address || '').trim();
+    if (!addr) return toast('Add your business address in Settings first');
+    setLocationText(addr);
+    setGps(null);
   }
 
   function useGps() {
@@ -178,9 +186,14 @@ export default function WorkOrderNew() {
           setGps(lat != null && lng != null ? { lat, lng } : null);
         }}
       />
-      <button type="button" className="btn btn--ghost btn--sm" onClick={useGps} style={{ marginTop: 8 }}>
-        <Icon name="map-pin" size={16} /> Use current location
-      </button>
+      <div className="row" style={{ gap: 8, marginTop: 8 }}>
+        <button type="button" className="btn btn--ghost btn--sm" onClick={useGps}>
+          <Icon name="map-pin" size={16} /> Use current location
+        </button>
+        <button type="button" className="btn btn--ghost btn--sm" onClick={useShopAddress}>
+          <Icon name="building" size={16} /> Shop
+        </button>
+      </div>
 
       <label>Service date</label>
       <input type="date" value={serviceDate} onChange={(e) => setServiceDate(e.target.value)} />
