@@ -12,6 +12,7 @@ import { blobToDataURL, generateBillPdf } from '../lib/pdf.js';
 import { shareFile, copyText } from '../lib/share.js';
 import { useToast } from '../components/Toast.jsx';
 import SignaturePadField from '../components/SignaturePadField.jsx';
+import CatalogPicker from '../components/CatalogPicker.jsx';
 
 const blankItem = () => ({ id: crypto.randomUUID(), description: '', qty: 1, unitPrice: '' });
 
@@ -25,8 +26,11 @@ export default function BillEditor() {
   const [taxRate, setTaxRate] = useState('');
   const [ccFeeApplied, setCcFeeApplied] = useState(false);
   const [ccFeeRate, setCcFeeRate] = useState('3');
+  const [paymentStatus, setPaymentStatus] = useState('unpaid');
+  const [paymentMethod, setPaymentMethod] = useState('');
   const [existingSignature, setExistingSignature] = useState(null); // Blob
   const [busy, setBusy] = useState(false);
+  const [catalogOpen, setCatalogOpen] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -45,9 +49,13 @@ export default function BillEditor() {
         setTaxRate(bill.taxRate ? String(bill.taxRate) : '');
         setCcFeeApplied(Boolean(bill.ccFeeApplied));
         setCcFeeRate(bill.ccFeeRate != null ? String(bill.ccFeeRate) : defaultCcRate);
+        setPaymentStatus(bill.paymentStatus || 'unpaid');
+        setPaymentMethod(bill.paymentMethod || '');
         if (bill.signatureBlob) setExistingSignature(bill.signatureBlob);
       } else {
         setCcFeeRate(defaultCcRate);
+        // Default tax rate from the business profile for new bills.
+        if (profile?.taxRate) setTaxRate(String(profile.taxRate));
       }
     })();
   }, [id]);
@@ -68,6 +76,15 @@ export default function BillEditor() {
     setItems((arr) => arr.map((it) => (it.id === itemId ? { ...it, [key]: val } : it)));
   const addItem = () => setItems((arr) => [...arr, blankItem()]);
   const removeItem = (itemId) => setItems((arr) => (arr.length > 1 ? arr.filter((it) => it.id !== itemId) : arr));
+
+  function addFromCatalog(item) {
+    const line = { id: crypto.randomUUID(), description: item.description, qty: 1, unitPrice: item.unitPrice };
+    setItems((arr) => {
+      const onlyBlank = arr.length === 1 && !arr[0].description.trim() && !arr[0].unitPrice;
+      return onlyBlank ? [line] : [...arr, line];
+    });
+    toast(`Added ${item.description}`);
+  }
 
   async function generateAndShare() {
     const cleanItems = items
@@ -102,6 +119,8 @@ export default function BillEditor() {
         ccFeeRate: ccFeeApplied ? Number(ccFeeRate) || 0 : 0,
         ccFeeAmount,
         total,
+        paymentStatus,
+        paymentMethod: paymentStatus === 'paid' ? paymentMethod : '',
         signatureBlob,
         recipients,
         pdfGeneratedAt: Date.now(),
@@ -110,13 +129,15 @@ export default function BillEditor() {
       if (order.status === 'open') {
         await updateWorkOrder(id, { status: 'completed', completedAt: Date.now() });
       }
+      // Re-read to pick up the assigned sequential bill number for the PDF.
+      const saved = await getBillForWorkOrder(id);
 
       const pdfBlob = await generateBillPdf({
         profile,
         account,
         contact,
         workOrder: order,
-        bill: billRecord,
+        bill: { ...billRecord, billNumber: saved?.billNumber, billPrefix: profile?.billPrefix || 'BOS-' },
         photoBlobs: photos.map((p) => p.blob),
       });
       const safeName = (account?.name || 'customer').replace(/[^a-z0-9]+/gi, '-').toLowerCase();
@@ -142,7 +163,13 @@ export default function BillEditor() {
   return (
     <>
       <h1 style={{ marginTop: 4 }}>Bill of Sale</h1>
-      <p className="muted">{account?.name}{contact ? ` · ${contact.name}` : ''}</p>
+      <p className="muted">
+        {account?.name}
+        {contact ? ` · ${contact.name}` : ''}
+        {ctx.bill?.billNumber
+          ? ` · ${(profile?.billPrefix || 'BOS-') + String(ctx.bill.billNumber).padStart(4, '0')}`
+          : ''}
+      </p>
 
       <div className="section-title">Line items</div>
       {items.map((it) => {
@@ -190,9 +217,14 @@ export default function BillEditor() {
           </div>
         );
       })}
-      <button className="btn btn--ghost" onClick={addItem}>
-        ＋ Add line item
-      </button>
+      <div className="btn-row" style={{ marginTop: 12 }}>
+        <button className="btn btn--ghost" onClick={addItem}>
+          ＋ Add line item
+        </button>
+        <button className="btn btn--ghost" onClick={() => setCatalogOpen(true)}>
+          📋 Add from catalog
+        </button>
+      </div>
 
       <div className="card" style={{ marginTop: 16 }}>
         <div className="row" style={{ justifyContent: 'space-between' }}>
@@ -254,6 +286,31 @@ export default function BillEditor() {
         </div>
       </div>
 
+      <div className="section-title">Payment</div>
+      <div className="chips">
+        {[
+          ['unpaid', 'Unpaid'],
+          ['paid', 'Paid'],
+        ].map(([val, label]) => (
+          <button
+            key={val}
+            className={`chip ${paymentStatus === val ? 'chip--active' : ''}`}
+            onClick={() => setPaymentStatus(val)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {paymentStatus === 'paid' && (
+        <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
+          <option value="">Payment method…</option>
+          <option>Cash</option>
+          <option>Check</option>
+          <option>Card</option>
+          <option>Other</option>
+        </select>
+      )}
+
       <div className="section-title">Customer signature</div>
       <SignaturePadField ref={sigRef} />
 
@@ -286,6 +343,13 @@ export default function BillEditor() {
           {busy ? 'Working…' : '📄 Generate PDF & Share'}
         </button>
       </div>
+
+      {catalogOpen && (
+        <CatalogPicker
+          onPick={addFromCatalog}
+          onClose={() => setCatalogOpen(false)}
+        />
+      )}
     </>
   );
 }

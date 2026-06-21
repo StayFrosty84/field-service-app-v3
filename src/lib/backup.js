@@ -1,7 +1,18 @@
 import { db } from '../db/db.js';
 
-const TABLES = ['businessProfile', 'accounts', 'contacts', 'workOrders', 'photos', 'billsOfSale'];
-const SCHEMA_VERSION = 1;
+const TABLES = [
+  'businessProfile',
+  'accounts',
+  'contacts',
+  'workOrders',
+  'photos',
+  'billsOfSale',
+  'catalogItems',
+];
+const SCHEMA_VERSION = 2;
+const LAST_BACKUP_KEY = 'fs-last-backup';
+
+export const lastBackupAt = () => Number(localStorage.getItem(LAST_BACKUP_KEY) || 0);
 
 // Fields that hold Blobs and must be base64-encoded for a portable JSON backup.
 const BLOB_FIELDS = {
@@ -49,6 +60,7 @@ export async function exportBackup() {
     exportedAt: new Date().toISOString(),
     data,
   };
+  localStorage.setItem(LAST_BACKUP_KEY, String(Date.now()));
   return new Blob([JSON.stringify(bundle)], { type: 'application/json' });
 }
 

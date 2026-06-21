@@ -1,10 +1,15 @@
+import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db.js';
 import { fmtDate } from '../lib/format.js';
+import SearchBar from '../components/SearchBar.jsx';
+import BackupReminder from '../components/BackupReminder.jsx';
 
 export default function Home() {
   const navigate = useNavigate();
+  const [query, setQuery] = useState('');
+  const [filter, setFilter] = useState('all'); // all | open | completed
 
   const data = useLiveQuery(async () => {
     const orders = await db.workOrders.orderBy('createdAt').reverse().toArray();
@@ -12,14 +17,49 @@ export default function Home() {
     return { orders, accounts };
   });
 
+  const filtered = useMemo(() => {
+    if (!data) return [];
+    const q = query.trim().toLowerCase();
+    return data.orders.filter((o) => {
+      if (filter !== 'all' && o.status !== filter) return false;
+      if (!q) return true;
+      const acct = data.accounts[o.accountId]?.name || '';
+      return (
+        acct.toLowerCase().includes(q) ||
+        (o.issue || '').toLowerCase().includes(q) ||
+        (o.location?.text || '').toLowerCase().includes(q)
+      );
+    });
+  }, [data, query, filter]);
+
   if (!data) return null;
   const { orders, accounts } = data;
-  const open = orders.filter((o) => o.status === 'open');
-  const done = orders.filter((o) => o.status === 'completed');
 
   return (
     <>
       <h1 style={{ marginTop: 4 }}>Work Orders</h1>
+      <BackupReminder hasData={orders.length > 0} />
+
+      {orders.length > 0 && (
+        <>
+          <SearchBar value={query} onChange={setQuery} placeholder="Search jobs, customers, locations…" />
+          <div className="chips">
+            {[
+              ['all', 'All'],
+              ['open', 'Open'],
+              ['completed', 'Completed'],
+            ].map(([val, label]) => (
+              <button
+                key={val}
+                className={`chip ${filter === val ? 'chip--active' : ''}`}
+                onClick={() => setFilter(val)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
 
       {orders.length === 0 && (
         <div className="empty">
@@ -30,16 +70,14 @@ export default function Home() {
         </div>
       )}
 
-      {open.length > 0 && <div className="section-title">Open ({open.length})</div>}
-      <div className="list">
-        {open.map((o) => (
-          <OrderRow key={o.id} order={o} account={accounts[o.accountId]} />
-        ))}
-      </div>
+      {orders.length > 0 && filtered.length === 0 && (
+        <p className="muted" style={{ textAlign: 'center', padding: '24px 0' }}>
+          No matches.
+        </p>
+      )}
 
-      {done.length > 0 && <div className="section-title">Completed ({done.length})</div>}
       <div className="list">
-        {done.map((o) => (
+        {filtered.map((o) => (
           <OrderRow key={o.id} order={o} account={accounts[o.accountId]} />
         ))}
       </div>

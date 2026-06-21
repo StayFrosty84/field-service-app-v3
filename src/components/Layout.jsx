@@ -4,6 +4,7 @@ const TABS = [
   { to: '/', label: 'Work', ico: '🧰', end: true },
   { to: '/accounts', label: 'Accounts', ico: '🏢' },
   { to: '/contacts', label: 'Contacts', ico: '👤' },
+  { to: '/billing', label: 'Billing', ico: '💵' },
   { to: '/settings', label: 'Settings', ico: '⚙️' },
 ];
 
@@ -15,11 +16,6 @@ export default function Layout() {
   const navigate = useNavigate();
   const isRoot = ROOT_PATHS.includes(pathname);
 
-  const title =
-    TABS.find((t) => t.to === pathname)?.fullLabel ||
-    TABS.find((t) => t.to === pathname)?.label ||
-    'Field Service';
-
   return (
     <div className="app">
       <header className="topbar">
@@ -28,7 +24,6 @@ export default function Layout() {
             ‹ Back
           </button>
         )}
-        <h1>{isRoot ? title : ''}</h1>
       </header>
 
       <main className="app__main">

@@ -4,6 +4,17 @@ export const money = (n) =>
 export const fmtDate = (ts) =>
   ts ? new Date(ts).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '';
 
+// <input type="date"> helpers (local-time safe).
+export const toDateInput = (ts) => {
+  const d = ts ? new Date(ts) : new Date();
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+};
+export const fromDateInput = (str) => {
+  if (!str) return null;
+  const [y, m, d] = str.split('-').map(Number);
+  return new Date(y, m - 1, d, 12, 0, 0).getTime();
+};
+
 export const fmtDateTime = (ts) =>
   ts
     ? new Date(ts).toLocaleString(undefined, {

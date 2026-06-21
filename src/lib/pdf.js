@@ -73,10 +73,23 @@ export async function generateBillPdf({ profile, account, contact, workOrder, bi
   doc.setFont('helvetica', 'bold').setFontSize(20);
   doc.text('BILL OF SALE', M, y + 8);
   doc.setFont('helvetica', 'normal').setFontSize(10).setTextColor(90);
+  if (bill?.billNumber) {
+    const num = `${bill.billPrefix || 'BOS-'}${String(bill.billNumber).padStart(4, '0')}`;
+    doc.text(`Bill #: ${num}`, right, y - 16, { align: 'right' });
+  }
   doc.text(`Date: ${fmtDate(bill?.pdfGeneratedAt || Date.now())}`, right, y - 4, { align: 'right' });
   doc.text(`Service: ${fmtDate(workOrder?.serviceDate)}`, right, y + 9, { align: 'right' });
   doc.setTextColor(0);
-  line(26);
+  // PAID marker (right column, below the dates so it doesn't collide with "Bill To")
+  const isPaid = bill?.paymentStatus === 'paid';
+  if (isPaid) {
+    doc.setFont('helvetica', 'bold').setFontSize(12).setTextColor(21, 128, 61);
+    doc.text(`PAID${bill.paymentMethod ? ` (${bill.paymentMethod})` : ''}`, right, y + 22, {
+      align: 'right',
+    });
+    doc.setTextColor(0);
+  }
+  line(isPaid ? 36 : 26);
 
   // ---- Bill To + Service ----
   const colW = (right - M - 16) / 2;
@@ -179,6 +192,22 @@ export async function generateBillPdf({ profile, account, contact, workOrder, bi
   doc.text(`Customer signature — ${contact?.name || account?.name || ''}`, M, y);
   doc.text(`Date: ${fmtDate(bill?.pdfGeneratedAt || Date.now())}`, M, y + 12);
   doc.setTextColor(0);
+
+  // ---- Terms / notes footer ----
+  if (profile?.billTerms) {
+    line(28);
+    if (y > PH - 60) {
+      doc.addPage();
+      y = M;
+    }
+    doc.setDrawColor(230).line(M, y, right, y);
+    line(12);
+    doc.setFont('helvetica', 'normal').setFontSize(9).setTextColor(110);
+    const termLines = doc.splitTextToSize(profile.billTerms, right - M);
+    doc.text(termLines, M, y);
+    doc.setTextColor(0);
+    y += termLines.length * 11;
+  }
 
   // ---- Photos ----
   if (photoBlobs.length) {

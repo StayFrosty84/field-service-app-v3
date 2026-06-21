@@ -3,6 +3,9 @@ import { createRoot } from 'react-dom/client';
 import { HashRouter } from 'react-router-dom';
 import App from './App.jsx';
 import './styles.css';
+import { initTheme } from './lib/theme.js';
+
+initTheme();
 
 createRoot(document.getElementById('root')).render(
   <React.StrictMode>

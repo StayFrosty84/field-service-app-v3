@@ -5,12 +5,14 @@ import {
   db,
   updateWorkOrder,
   deleteWorkOrder,
+  createWorkOrder,
   addPhoto,
   deletePhoto,
   getBillForWorkOrder,
 } from '../db/db.js';
-import { fmtDate } from '../lib/format.js';
+import { toDateInput, fromDateInput } from '../lib/format.js';
 import { useToast } from '../components/Toast.jsx';
+import AddressAutocomplete from '../components/AddressAutocomplete.jsx';
 
 export default function WorkOrderDetail() {
   const { id } = useParams();
@@ -18,6 +20,9 @@ export default function WorkOrderDetail() {
   const toast = useToast();
   const [issue, setIssue] = useState('');
   const [notes, setNotes] = useState('');
+  const [locationText, setLocationText] = useState('');
+  const [gps, setGps] = useState(null);
+  const [serviceDate, setServiceDate] = useState('');
   const [loaded, setLoaded] = useState(false);
 
   const data = useLiveQuery(async () => {
@@ -34,6 +39,13 @@ export default function WorkOrderDetail() {
     if (data?.order && !loaded) {
       setIssue(data.order.issue || '');
       setNotes(data.order.notes || '');
+      setLocationText(data.order.location?.text || '');
+      setGps(
+        data.order.location?.lat != null
+          ? { lat: data.order.location.lat, lng: data.order.location.lng }
+          : null
+      );
+      setServiceDate(toDateInput(data.order.serviceDate));
       setLoaded(true);
     }
   }, [data, loaded]);
@@ -43,8 +55,24 @@ export default function WorkOrderDetail() {
   const { order, account, contact, photos, bill } = data;
 
   async function saveEdits() {
-    await updateWorkOrder(id, { issue: issue.trim(), notes: notes.trim() });
+    await updateWorkOrder(id, {
+      issue: issue.trim(),
+      notes: notes.trim(),
+      location: { text: locationText.trim(), ...(gps || {}) },
+      serviceDate: fromDateInput(serviceDate) || order.serviceDate,
+    });
     toast('Saved');
+  }
+
+  async function duplicate() {
+    const newId = await createWorkOrder({
+      accountId: order.accountId,
+      contactId: order.contactId || null,
+      location: order.location || { text: '' },
+      issue: order.issue || '',
+    });
+    toast('Duplicated — new work order');
+    navigate(`/work-orders/${newId}`);
   }
 
   async function toggleComplete() {
@@ -84,13 +112,33 @@ export default function WorkOrderDetail() {
         {contact && (
           <div>
             👤 <Link to={`/contacts/${contact.id}`}>{contact.name}</Link>
-            {contact.phone ? ` · ${contact.phone}` : ''}
+            {contact.phone ? (
+              <>
+                {' · '}
+                <a href={`tel:${contact.phone}`}>{contact.phone}</a>
+              </>
+            ) : (
+              ''
+            )}
           </div>
         )}
-        {order.location?.text && <div className="muted" style={{ marginTop: 6 }}>📍 {order.location.text}</div>}
-        <div className="muted" style={{ marginTop: 6 }}>Service date: {fmtDate(order.serviceDate)}</div>
       </div>
 
+      <label>Location</label>
+      <AddressAutocomplete
+        value={locationText}
+        placeholder="Search address, or type a description"
+        onChangeText={(t) => {
+          setLocationText(t);
+          setGps(null);
+        }}
+        onPick={({ label, lat, lng }) => {
+          setLocationText(label);
+          setGps(lat != null && lng != null ? { lat, lng } : null);
+        }}
+      />
+      <label>Service date</label>
+      <input type="date" value={serviceDate} onChange={(e) => setServiceDate(e.target.value)} />
       <label>Issue</label>
       <textarea value={issue} onChange={(e) => setIssue(e.target.value)} />
       <label>Internal notes</label>
@@ -119,8 +167,13 @@ export default function WorkOrderDetail() {
         <button className="btn btn--ghost" onClick={toggleComplete}>
           {order.status === 'open' ? '✓ Mark completed' : '↩ Reopen'}
         </button>
+        <button className="btn btn--ghost" onClick={duplicate}>
+          ⧉ Duplicate
+        </button>
+      </div>
+      <div className="btn-row">
         <button className="btn btn--danger" onClick={onDelete}>
-          Delete
+          Delete work order
         </button>
       </div>
     </>

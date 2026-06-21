@@ -38,8 +38,8 @@ export default function ContactDetail() {
             🏢 <Link to={`/accounts/${account.id}`}>{account.name}</Link>
           </div>
         )}
-        {contact.phone && <div>📞 {contact.phone}</div>}
-        {contact.email && <div>✉️ {contact.email}</div>}
+        {contact.phone && <div>📞 <a href={`tel:${contact.phone}`}>{contact.phone}</a></div>}
+        {contact.email && <div>✉️ <a href={`mailto:${contact.email}`}>{contact.email}</a></div>}
         {contact.notes && <div className="muted" style={{ marginTop: 6 }}>{contact.notes}</div>}
       </div>
 

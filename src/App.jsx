@@ -14,6 +14,7 @@ import AccountDetail from './pages/AccountDetail.jsx';
 import Contacts from './pages/Contacts.jsx';
 import ContactForm from './pages/ContactForm.jsx';
 import ContactDetail from './pages/ContactDetail.jsx';
+import Billing from './pages/Billing.jsx';
 import Settings from './pages/Settings.jsx';
 
 export default function App() {
@@ -43,6 +44,8 @@ export default function App() {
           <Route path="contacts/new" element={<ContactForm />} />
           <Route path="contacts/:id" element={<ContactDetail />} />
           <Route path="contacts/:id/edit" element={<ContactForm />} />
+
+          <Route path="billing" element={<Billing />} />
 
           <Route path="settings" element={<Settings />} />
         </Route>

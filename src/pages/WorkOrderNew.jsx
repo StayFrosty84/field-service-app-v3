@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, createAccount, createContact, createWorkOrder, addPhoto } from '../db/db.js';
+import { toDateInput, fromDateInput } from '../lib/format.js';
 import { useToast } from '../components/Toast.jsx';
 import AddressAutocomplete from '../components/AddressAutocomplete.jsx';
 
@@ -20,6 +21,7 @@ export default function WorkOrderNew() {
   const [newContactPhone, setNewContactPhone] = useState('');
   const [locationText, setLocationText] = useState('');
   const [gps, setGps] = useState(null);
+  const [serviceDate, setServiceDate] = useState(toDateInput(Date.now()));
   const [issue, setIssue] = useState('');
   const [photos, setPhotos] = useState([]); // { id, blob, url }
   const [busy, setBusy] = useState(false);
@@ -87,6 +89,7 @@ export default function WorkOrderNew() {
         accountId: acctId,
         contactId: ctctId || null,
         location: { text: locationText.trim(), ...(gps || {}) },
+        serviceDate: fromDateInput(serviceDate) || Date.now(),
         issue: issue.trim(),
       });
 
@@ -173,6 +176,9 @@ export default function WorkOrderNew() {
       <button type="button" className="btn btn--ghost btn--sm" onClick={useGps} style={{ marginTop: 8 }}>
         📍 Use current location
       </button>
+
+      <label>Service date</label>
+      <input type="date" value={serviceDate} onChange={(e) => setServiceDate(e.target.value)} />
 
       <label>The issue</label>
       <textarea

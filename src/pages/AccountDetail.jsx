@@ -32,8 +32,8 @@ export default function AccountDetail() {
     <>
       <h1 style={{ marginTop: 4 }}>{account.name}</h1>
       <div className="card">
-        {account.phone && <div>📞 {account.phone}</div>}
-        {account.email && <div>✉️ {account.email}</div>}
+        {account.phone && <div>📞 <a href={`tel:${account.phone}`}>{account.phone}</a></div>}
+        {account.email && <div>✉️ <a href={`mailto:${account.email}`}>{account.email}</a></div>}
         {account.address && <div className="muted" style={{ marginTop: 6 }}>{account.address}</div>}
         {account.notes && <div className="muted" style={{ marginTop: 6 }}>{account.notes}</div>}
       </div>

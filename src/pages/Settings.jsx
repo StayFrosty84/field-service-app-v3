@@ -4,15 +4,33 @@ import { exportBackup, importBackup, backupFilename } from '../lib/backup.js';
 import { shareFile, openBlob } from '../lib/share.js';
 import { computeTotals } from '../lib/format.js';
 import { sampleBillData } from '../lib/sampleBill.js';
+import { getTheme, setTheme } from '../lib/theme.js';
 import { useToast } from '../components/Toast.jsx';
+import CatalogManager from '../components/CatalogManager.jsx';
 
-const EMPTY = { businessName: '', ownerName: '', phone: '', email: '', address: '', ccFeeRate: '3' };
+const EMPTY = {
+  businessName: '',
+  ownerName: '',
+  phone: '',
+  email: '',
+  address: '',
+  ccFeeRate: '3',
+  taxRate: '',
+  billPrefix: 'BOS-',
+  billTerms: '',
+};
 
 export default function Settings() {
   const toast = useToast();
   const [form, setForm] = useState(EMPTY);
   const [logoBlob, setLogoBlob] = useState(null);
   const [logoUrl, setLogoUrl] = useState(null);
+  const [theme, setThemeState] = useState(getTheme());
+
+  function chooseTheme(t) {
+    setTheme(t);
+    setThemeState(t);
+  }
 
   useEffect(() => {
     getProfile().then((p) => {
@@ -24,6 +42,9 @@ export default function Settings() {
           email: p.email || '',
           address: p.address || '',
           ccFeeRate: p.ccFeeRate != null ? String(p.ccFeeRate) : '3',
+          taxRate: p.taxRate != null ? String(p.taxRate) : '',
+          billPrefix: p.billPrefix != null ? p.billPrefix : 'BOS-',
+          billTerms: p.billTerms || '',
         });
         if (p.logoBlob) {
           setLogoBlob(p.logoBlob);
@@ -44,7 +65,12 @@ export default function Settings() {
   }
 
   async function saveProfileForm() {
-    await saveProfile({ ...form, ccFeeRate: Number(form.ccFeeRate) || 0, logoBlob });
+    await saveProfile({
+      ...form,
+      ccFeeRate: Number(form.ccFeeRate) || 0,
+      taxRate: Number(form.taxRate) || 0,
+      logoBlob,
+    });
     toast('Profile saved');
   }
 
@@ -105,6 +131,23 @@ export default function Settings() {
     <>
       <h1 style={{ marginTop: 4 }}>Settings</h1>
 
+      <div className="section-title">Appearance</div>
+      <div className="chips">
+        {[
+          ['system', 'System'],
+          ['light', 'Light'],
+          ['dark', 'Dark'],
+        ].map(([val, label]) => (
+          <button
+            key={val}
+            className={`chip ${theme === val ? 'chip--active' : ''}`}
+            onClick={() => chooseTheme(val)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       <div className="section-title">Business profile (appears on every Bill of Sale)</div>
 
       <label>Business name</label>
@@ -122,15 +165,42 @@ export default function Settings() {
       <label>Address</label>
       <textarea value={form.address} onChange={set('address')} />
 
-      <label>Default credit card fee % (used on new bills; editable per bill)</label>
-      <input
-        type="number"
-        inputMode="decimal"
-        min="0"
-        step="0.01"
-        value={form.ccFeeRate}
-        onChange={set('ccFeeRate')}
-        style={{ width: 140 }}
+      <div className="row" style={{ gap: 12 }}>
+        <div style={{ flex: 1 }}>
+          <label>Default tax %</label>
+          <input
+            type="number"
+            inputMode="decimal"
+            min="0"
+            step="0.001"
+            value={form.taxRate}
+            onChange={set('taxRate')}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label>Default card fee %</label>
+          <input
+            type="number"
+            inputMode="decimal"
+            min="0"
+            step="0.01"
+            value={form.ccFeeRate}
+            onChange={set('ccFeeRate')}
+          />
+        </div>
+      </div>
+      <p className="muted" style={{ fontSize: 13, marginTop: 6 }}>
+        Defaults for new bills — both stay editable on each bill.
+      </p>
+
+      <label>Bill number prefix</label>
+      <input value={form.billPrefix} onChange={set('billPrefix')} placeholder="BOS-" style={{ width: 160 }} />
+
+      <label>Terms / notes (printed at the bottom of every bill)</label>
+      <textarea
+        value={form.billTerms}
+        onChange={set('billTerms')}
+        placeholder="e.g. Payment due upon receipt. Thank you for your business!"
       />
 
       <label>Logo (optional)</label>
@@ -156,6 +226,9 @@ export default function Settings() {
         “Preview sample” opens an example Bill of Sale PDF using your current profile above,
         so you can check how it looks (including the credit card fee).
       </p>
+
+      <div className="section-title">Parts &amp; Labor catalog</div>
+      <CatalogManager />
 
       <div className="section-title">Backup &amp; restore</div>
       <div className="card">

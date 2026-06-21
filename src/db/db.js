@@ -13,6 +13,12 @@ db.version(1).stores({
   billsOfSale: 'id, workOrderId, createdAt',
 });
 
+// v2: parts/labor catalog + payment tracking on bills.
+db.version(2).stores({
+  catalogItems: 'id, description, createdAt',
+  billsOfSale: 'id, workOrderId, createdAt, paymentStatus',
+});
+
 export const uid = () =>
   crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
@@ -26,7 +32,9 @@ export async function getProfile() {
 }
 
 export async function saveProfile(data) {
-  await db.businessProfile.put({ ...data, id: PROFILE_ID });
+  // Merge so fields managed elsewhere (e.g. nextBillNumber) aren't wiped.
+  const existing = (await db.businessProfile.get(PROFILE_ID)) || {};
+  await db.businessProfile.put({ ...existing, ...data, id: PROFILE_ID });
 }
 
 // ---- Accounts ---------------------------------------------------------------
@@ -107,12 +115,57 @@ export async function getBillForWorkOrder(workOrderId) {
 }
 
 export async function saveBill(workOrderId, data) {
-  const existing = await getBillForWorkOrder(workOrderId);
-  if (existing) {
-    await db.billsOfSale.update(existing.id, data);
-    return existing.id;
-  }
+  return db.transaction('rw', db.billsOfSale, db.businessProfile, async () => {
+    const existing = await db.billsOfSale.where('workOrderId').equals(workOrderId).first();
+
+    // Assign a sequential bill number once, the first time a bill is saved.
+    let billNumber = existing?.billNumber;
+    if (!billNumber) {
+      const profile = (await db.businessProfile.get(PROFILE_ID)) || { id: PROFILE_ID };
+      billNumber = profile.nextBillNumber || 1;
+      await db.businessProfile.put({ ...profile, nextBillNumber: billNumber + 1 });
+    }
+
+    if (existing) {
+      await db.billsOfSale.update(existing.id, { ...data, billNumber });
+      return existing.id;
+    }
+    const id = uid();
+    await db.billsOfSale.add({
+      id,
+      workOrderId,
+      createdAt: now(),
+      paymentStatus: 'unpaid',
+      billNumber,
+      ...data,
+    });
+    return id;
+  });
+}
+
+export async function markBillPaid(id, method) {
+  await db.billsOfSale.update(id, { paymentStatus: 'paid', paymentMethod: method || '', paidAt: now() });
+}
+
+export async function markBillUnpaid(id) {
+  await db.billsOfSale.update(id, { paymentStatus: 'unpaid', paidAt: null });
+}
+
+// ---- Parts & labor catalog --------------------------------------------------
+export async function listCatalog() {
+  return db.catalogItems.orderBy('description').toArray();
+}
+
+export async function createCatalogItem(data) {
   const id = uid();
-  await db.billsOfSale.add({ id, workOrderId, createdAt: now(), ...data });
+  await db.catalogItems.add({ id, createdAt: now(), ...data });
   return id;
+}
+
+export async function updateCatalogItem(id, data) {
+  await db.catalogItems.update(id, data);
+}
+
+export async function deleteCatalogItem(id) {
+  await db.catalogItems.delete(id);
 }
