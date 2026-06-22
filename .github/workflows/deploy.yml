@@ -23,7 +23,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: npm ci
+      # npm install (not the stricter `npm ci`) so platform-specific optional binaries
+      # (esbuild/rollup) resolve correctly on the Linux runner regardless of where the
+      # lockfile was generated.
+      - run: npm install
       - run: npm run icons
       # Project pages are served from /<repo>/, so base must match the repo name.
       - run: npm run build
