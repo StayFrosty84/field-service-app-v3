@@ -256,6 +256,30 @@ select:focus {
   margin-top: 16px;
 }
 
+/* Drag-to-reorder handle (used by SortableList). touch-action:none lets a touch
+   drag the handle instead of scrolling the page. */
+.drag-handle {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  min-height: 40px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  cursor: grab;
+  touch-action: none;
+}
+.drag-handle:active {
+  cursor: grabbing;
+  color: var(--text);
+}
+.sortable-dragging {
+  opacity: 0.55;
+}
+
 /* FAB */
 .fab {
   position: fixed;

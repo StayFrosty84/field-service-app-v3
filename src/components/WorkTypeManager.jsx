@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { listWorkTypes, createWorkType, updateWorkType, deleteWorkType } from '../db/db.js';
+import SortableList from './SortableList.jsx';
 import Icon from './Icon.jsx';
 
-const blankItem = () => ({ description: '', qty: 1, unitPrice: '' });
+// _k is a stable client-only key for drag reordering; it's dropped on save.
+const blankItem = () => ({ _k: crypto.randomUUID(), description: '', qty: 1, unitPrice: '' });
 
 export default function WorkTypeManager() {
   const types = useLiveQuery(listWorkTypes) || [];
@@ -19,7 +21,7 @@ export default function WorkTypeManager() {
   function startEdit(t) {
     setEditing(t.id);
     setName(t.name);
-    setItems(t.items?.length ? t.items.map((i) => ({ ...i })) : [blankItem()]);
+    setItems(t.items?.length ? t.items.map((i) => ({ _k: crypto.randomUUID(), ...i })) : [blankItem()]);
   }
   function cancel() {
     setEditing(null);
@@ -58,14 +60,20 @@ export default function WorkTypeManager() {
           <label>Work type name</label>
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Tire Job" />
           <div className="section-title" style={{ marginTop: 12 }}>Template line items</div>
-          {items.map((it, i) => (
-            <div key={i} className="row" style={{ gap: 6, marginBottom: 6 }}>
-              <input style={{ flex: 2 }} placeholder="Description" value={it.description} onChange={(e) => setItem(i, 'description', e.target.value)} />
-              <input style={{ width: 56 }} type="number" inputMode="decimal" min="0" value={it.qty} onChange={(e) => setItem(i, 'qty', e.target.value)} aria-label="Qty" />
-              <input style={{ width: 80 }} type="number" inputMode="decimal" min="0" step="0.01" placeholder="0.00" value={it.unitPrice} onChange={(e) => setItem(i, 'unitPrice', e.target.value)} aria-label="Unit price" />
-              <button className="btn btn--ghost btn--sm" onClick={() => removeRow(i)} aria-label="Remove item"><Icon name="x" /></button>
-            </div>
-          ))}
+          <SortableList
+            items={items}
+            getKey={(it) => it._k}
+            onReorder={setItems}
+            renderItem={(it, i, handleProps) => (
+              <div className="row" style={{ gap: 6, marginBottom: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                <button type="button" {...handleProps}><Icon name="grip-vertical" size={18} /></button>
+                <input style={{ flex: '1 1 160px' }} placeholder="Description" value={it.description} onChange={(e) => setItem(i, 'description', e.target.value)} />
+                <input style={{ width: 72, fontSize: 18, fontWeight: 600, textAlign: 'center' }} type="number" inputMode="decimal" min="0" value={it.qty} onChange={(e) => setItem(i, 'qty', e.target.value)} aria-label="Qty" />
+                <input style={{ width: 104, fontSize: 18 }} type="number" inputMode="decimal" min="0" step="0.01" placeholder="0.00" value={it.unitPrice} onChange={(e) => setItem(i, 'unitPrice', e.target.value)} aria-label="Unit price" />
+                <button className="btn btn--ghost btn--sm" onClick={() => removeRow(i)} aria-label="Remove item"><Icon name="x" /></button>
+              </div>
+            )}
+          />
           <button className="btn btn--ghost btn--sm" onClick={addRow}><Icon name="plus" /> Add item</button>
           <div className="btn-row">
             <button className="btn btn--ghost" onClick={cancel}>Cancel</button>

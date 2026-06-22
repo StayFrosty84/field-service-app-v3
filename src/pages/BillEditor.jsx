@@ -15,6 +15,7 @@ import { useToast } from '../components/Toast.jsx';
 import { useFeatures } from '../lib/useFeatures.js';
 import SignaturePadField from '../components/SignaturePadField.jsx';
 import CatalogPicker from '../components/CatalogPicker.jsx';
+import SortableList from '../components/SortableList.jsx';
 import Icon from '../components/Icon.jsx';
 
 const blankItem = () => ({ id: crypto.randomUUID(), description: '', qty: 1, unitPrice: '' });
@@ -100,15 +101,6 @@ export default function BillEditor() {
     setItems((arr) => arr.map((it) => (it.id === itemId ? { ...it, [key]: val } : it)));
   const addItem = () => setItems((arr) => [...arr, blankItem()]);
   const removeItem = (itemId) => setItems((arr) => (arr.length > 1 ? arr.filter((it) => it.id !== itemId) : arr));
-  const moveItem = (itemId, dir) =>
-    setItems((arr) => {
-      const i = arr.findIndex((it) => it.id === itemId);
-      const j = i + dir;
-      if (i < 0 || j < 0 || j >= arr.length) return arr;
-      const copy = [...arr];
-      [copy[i], copy[j]] = [copy[j], copy[i]];
-      return copy;
-    });
 
   function addFromCatalog(item) {
     const line = { id: crypto.randomUUID(), description: item.description, qty: 1, unitPrice: item.unitPrice };
@@ -297,45 +289,46 @@ export default function BillEditor() {
       </p>
 
       <div className="section-title">Line items</div>
-      {items.map((it, idx) => {
-        const amount = (Number(it.qty) || 0) * (Number(it.unitPrice) || 0);
-        return (
-          <div key={it.id} className="card" style={{ padding: 12 }}>
-            <input
-              placeholder="Description (part or labor)"
-              value={it.description}
-              onChange={(e) => setItem(it.id, 'description', e.target.value)}
-            />
-            <div className="row" style={{ gap: 8, marginTop: 8 }}>
-              <div style={{ flex: 1 }}>
-                <span className="muted" style={{ fontSize: 12 }}>Qty</span>
-                <input type="number" inputMode="decimal" min="0" value={it.qty} onChange={(e) => setItem(it.id, 'qty', e.target.value)} style={{ fontSize: 18, fontWeight: 600, textAlign: 'center' }} />
-              </div>
-              <div style={{ flex: 1 }}>
-                <span className="muted" style={{ fontSize: 12 }}>Unit price</span>
-                <input type="number" inputMode="decimal" min="0" step="0.01" placeholder="0.00" value={it.unitPrice} onChange={(e) => setItem(it.id, 'unitPrice', e.target.value)} style={{ fontSize: 18 }} />
-              </div>
-              <div style={{ flex: '0 0 84px', textAlign: 'right' }}>
-                <span className="muted" style={{ fontSize: 12 }}>Amount</span>
-                <div style={{ minHeight: 48, display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>{money(amount)}</div>
-              </div>
-            </div>
-            <div className="row" style={{ gap: 8, marginTop: 8, justifyContent: 'space-between' }}>
-              <div className="row" style={{ gap: 8 }}>
-                <button className="btn btn--ghost btn--sm" aria-label="Move up" disabled={idx === 0} onClick={() => moveItem(it.id, -1)}>
-                  <Icon name="chevron-up" size={16} />
+      <SortableList
+        items={items}
+        getKey={(it) => it.id}
+        onReorder={setItems}
+        renderItem={(it, idx, handleProps) => {
+          const amount = (Number(it.qty) || 0) * (Number(it.unitPrice) || 0);
+          return (
+            <div className="card" style={{ padding: 12 }}>
+              <div className="row" style={{ gap: 6, alignItems: 'center' }}>
+                <button type="button" {...handleProps}>
+                  <Icon name="grip-vertical" size={18} />
                 </button>
-                <button className="btn btn--ghost btn--sm" aria-label="Move down" disabled={idx === items.length - 1} onClick={() => moveItem(it.id, 1)}>
-                  <Icon name="chevron-down" size={16} />
-                </button>
+                <input
+                  style={{ flex: 1 }}
+                  placeholder="Description (part or labor)"
+                  value={it.description}
+                  onChange={(e) => setItem(it.id, 'description', e.target.value)}
+                />
               </div>
-              <button className="btn btn--ghost btn--sm" onClick={() => removeItem(it.id)}>
+              <div className="row" style={{ gap: 8, marginTop: 8 }}>
+                <div style={{ flex: 1 }}>
+                  <span className="muted" style={{ fontSize: 12 }}>Qty</span>
+                  <input type="number" inputMode="decimal" min="0" value={it.qty} onChange={(e) => setItem(it.id, 'qty', e.target.value)} style={{ fontSize: 18, fontWeight: 600, textAlign: 'center' }} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <span className="muted" style={{ fontSize: 12 }}>Unit price</span>
+                  <input type="number" inputMode="decimal" min="0" step="0.01" placeholder="0.00" value={it.unitPrice} onChange={(e) => setItem(it.id, 'unitPrice', e.target.value)} style={{ fontSize: 18 }} />
+                </div>
+                <div style={{ flex: '0 0 84px', textAlign: 'right' }}>
+                  <span className="muted" style={{ fontSize: 12 }}>Amount</span>
+                  <div style={{ minHeight: 48, display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>{money(amount)}</div>
+                </div>
+              </div>
+              <button className="btn btn--ghost btn--sm" style={{ marginTop: 8 }} onClick={() => removeItem(it.id)}>
                 Remove
               </button>
             </div>
-          </div>
-        );
-      })}
+          );
+        }}
+      />
       <div className="btn-row" style={{ marginTop: 12 }}>
         <button className="btn btn--ghost" onClick={addItem}><Icon name="plus" /> Add line item</button>
         <button className="btn btn--ghost" onClick={() => setCatalogOpen(true)}><Icon name="clipboard" /> Add from catalog</button>

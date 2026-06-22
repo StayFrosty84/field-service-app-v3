@@ -177,6 +177,16 @@ const ICONS = {
   ),
   'chevron-up': <path d="m18 15-6-6-6 6" />,
   'chevron-down': <path d="m6 9 6 6 6-6" />,
+  'grip-vertical': (
+    <>
+      <circle cx="9" cy="5" r="1" />
+      <circle cx="9" cy="12" r="1" />
+      <circle cx="9" cy="19" r="1" />
+      <circle cx="15" cy="5" r="1" />
+      <circle cx="15" cy="12" r="1" />
+      <circle cx="15" cy="19" r="1" />
+    </>
+  ),
 };
 
 export default function Icon({ name, size = 18, className = '', ...rest }) {
